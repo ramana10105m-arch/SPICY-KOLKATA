@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Spicy Kolkata – Food Order</title>
+<style>
+  :root {
+    --primary:#d32f2f; --secondary:#ff7043; --accent:#4caf50;
+    --bg:#fafafa; --card:#ffffff; --text:#333; --muted:#777;
+  }
+  body.dark { --bg:#121212; --card:#1e1e1e; --text:#eee; --muted:#aaa; }
+
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:var(--text); transition:background 0.3s,color 0.3s; }
+
+  /* Header with animated gradient + text entrance */
+  header {
+    background:linear-gradient(270deg,#d32f2f,#ff7043,#4caf50);
+    background-size:600% 600%;
+    animation:gradientShift 12s ease infinite;
+    color:#fff; padding:40px 20px; text-align:center;
+  }
+  @keyframes gradientShift { 0%{background-position:0% 50%;} 50%{background-position:100% 50%;} 100%{background-position:0% 50%;} }
+  header h1 { margin:0; font-size:36px; animation:fadeInDown 0.8s ease; }
+  header p { margin:8px 0 0; font-size:16px; animation:fadeInUp 1s ease; }
+  @keyframes fadeInDown { from{opacity:0; transform:translateY(-16px);} to{opacity:1; transform:translateY(0);} }
+  @keyframes fadeInUp { from{opacity:0; transform:translateY(16px);} to{opacity:1; transform:translateY(0);} }
+
+  /* Category bar */
+  .category-bar {
+    display:flex; flex-wrap:wrap; gap:10px; justify-content:center;
+    padding:14px; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.08);
+    position:sticky; top:0; z-index:10;
+  }
+  .cat-btn {
+    border:none; background:var(--accent); color:#fff; padding:8px 12px;
+    border-radius:8px; font-weight:600; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;
+  }
+  .cat-btn:hover { transform:translateY(-2px); box-shadow:0 6px 12px rgba(0,0,0,0.12); }
+  .theme-btn { background:#6a1b9a; }
+
+  /* Layout */
+  main { display:grid; grid-template-columns:2fr 1fr; gap:20px; max-width:1200px; margin:20px auto; padding:0 20px; }
+  @media (max-width:960px){ main { grid-template-columns:1fr; } #cartSection { position:static; } }
+
+  /* Sections */
+  section.card {
+    background:var(--card); border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.08);
+    padding:18px; display:none; opacity:0; transform:translateY(10px);
+  }
+  section.card.active { display:block; animation:sectionIn 0.4s ease forwards; }
+  @keyframes sectionIn { to{opacity:1; transform:translateY(0);} }
+  .section-title { margin:0 0 12px; font-size:20px; }
+
+  /* Menu grid and items (animated) */
+  .menu-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px; }
+  .food-item {
+    border:1px solid #eee; border-radius:10px; padding:12px; background:var(--card);
+    opacity:0; transform:translateY(16px); animation:itemIn 0.5s ease forwards;
+    transition:transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  }
+  .food-item:hover { transform:translateY(-3px); box-shadow:0 10px 18px rgba(0,0,0,0.12); border-color:#ddd; }
+  @keyframes itemIn { to{opacity:1; transform:translateY(0);} }
+  .food-item h3 { margin:0 0 6px; font-size:16px; }
+  .price { font-weight:700; color:var(--primary); margin:6px 0 10px; }
+  .add { background:var(--secondary); color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; transition:background 0.2s, transform 0.15s; }
+  .add:hover { background:#e64a19; transform:scale(1.03); }
+
+  /* Cart */
+  #cartSection { position:sticky; top:84px; height:fit-content; display:block; }
+  #cartSection.cart-updated { animation:bounce 0.4s; }
+  @keyframes bounce { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-6px);} }
+  .cart-list { list-style:none; padding:0; margin:0; max-height:360px; overflow:auto; border:1px solid #eee; border-radius:8px; }
+  .cart-item { display:flex; justify-content:space-between; gap:10px; padding:10px 12px; border-bottom:1px solid #f0f0f0; }
+  .cart-item:last-child { border-bottom:none; }
+  .line-note { font-size:12px; color:var(--muted); }
+  .totals { margin-top:12px; display:grid; gap:6px; }
+  .row { display:flex; justify-content:space-between; }
+  .row strong { color:#000; }
+
+  .form { display:grid; gap:10px; margin-top:12px; }
+  .form input, .form textarea { width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; background:var(--card); color:var(--text); }
+  .btn { background:var(--accent); color:#fff; border:none; padding:10px 12px; border-radius:8px; font-weight:700; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s; }
+  .btn:hover { transform:translateY(-2px); box-shadow:0 6px 12px rgba(0,0,0,0.12); }
+  .btn.secondary { background:#eee; color:#222; }
+  .btn.danger { background:#c62828; }
+  .btn:disabled { opacity:0.6; cursor:not-allowed; }
+
+  footer { text-align:center; color:var(--muted); font-size:13px; padding:18px; transition:color 0.3s; }
+  footer small { display:block; margin-top:6px; }
+
+  /* Toast */
+  .toast {
+    position:fixed; bottom:-50px; left:50%; transform:translateX(-50%);
+    background:#333; color:#fff; padding:10px 16px; border-radius:8px;
+    opacity:0; transition:all 0.3s; z-index:9999;
+  }
+  .toast.show { bottom:20px; opacity:1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Spicy Kolkata</h1>
+  <p>Authentic Kolkata flavors • Narkatpalli • Delivery within 5 km</p>
+</header>
+
+<div class="category-bar">
+  <button class="cat-btn" onclick="showCategory('veg')">Veg</button>
+  <button class="cat-btn" onclick="showCategory('nonveg')">Non‑Veg</button>
+  <button class="cat-btn" onclick="showCategory('starters')">Starters</button>
+  <button class="cat-btn" onclick="showCategory('breads')">Breads</button>
+  <button class="cat-btn" onclick="showCategory('rice')">Rice</button>
+  <button class="cat-btn" onclick="showCategory('biryani')">Biryani</button>
+  <button class="cat-btn" onclick="showCategory('beverages')">Beverages</button>
+  <button class="cat-btn" onclick="showCategory('desserts')">Desserts</button>
+  <button class="cat-btn theme-btn" onclick="toggleTheme()">Toggle theme</button>
+</div>
+
+<main>
+  <!-- Veg Mains -->
+  <section class="card" id="veg">
+    <h2 class="section-title">Veg mains</h2>
+    <div class="menu-grid">
+      <div class="food-item" data-name="Butter Paneer" data-price="180"><h3>Butter Paneer</h3><div class="price">₹180</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Paneer Butter Masala" data-price="190"><h3>Paneer Butter Masala</h3><div class="price">₹190</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Kadai Paneer" data-price="190"><h3>Kadai Paneer</h3><div class="price">₹190</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Chilli Paneer" data-price="170"><h3>Chilli Paneer</h3><div class="price">₹170</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Palak Paneer" data-price="170"><h3>Palak Paneer</h3><div class="price">₹170</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Matar Paneer" data-price="170"><h3>Matar Paneer</h3><div class="price">₹170</div><button class="add" onclick="addToCart(this)">Add</button></div>
+
+      <div class="food-item" data-name="Veg Kolhapuri" data-price="160"><h3>Veg Kolhapuri</h3><div class="price">₹160</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Veg Kadai" data-price="160"><h3>Veg Kadai</h3><div class="price">₹160</div><button class="add" onclick="addToCart(this)">Add</button></div>
+
+      <div class="food-item" data-name="Dal Tadka" data-price="120"><h3>Dal Tadka</h3><div class="price">₹120</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Dal Fry" data-price="120"><h3>Dal Fry</h3><div class="price">₹120</div><button class="add" onclick="addToCart(this)">Add</button></div>
+
+      <div class="food-item" data-name="Chole Masala" data-price="140"><h3>Chole Masala</h3><div class="price">₹140</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Rajma Masala" data-price="140"><h3>Rajma Masala</h3><div class="price">₹140</div><button class="add" onclick="addToCart(this)">Add</button></div>
+
+      <div class="food-item" data-name="Aloo Gobi" data-price="130"><h3>Aloo Gobi</h3><div class="price">₹130</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Mix Veg Curry" data-price="150"><h3>Mix Veg Curry</h3><div class="price">₹150</div><button class="add" onclick="addToCart(this)">Add</button></div>
+    </div>
+  </section>
+
+  <!-- Non-Veg Mains -->
+  <section class="card" id="nonveg">
+    <h2 class="section-title">Non‑veg mains</h2>
+    <div class="menu-grid">
+      <div class="food-item" data-name="Butter Chicken" data-price="200"><h3>Butter Chicken</h3><div class="price">₹200</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Chicken Curry" data-price="180"><h3>Chicken Curry</h3><div class="price">₹180</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Chicken Masala" data-price="190"><h3>Chicken Masala</h3><div class="price">₹190</div><button class="add" onclick="addToCart(this)">Add</button></div>
+
+      <div class="food-item" data-name="Chilli Chicken (Gravy)" data-price="180"><h3>Chilli Chicken (Gravy)</h3><div class="price">₹180</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Chicken Kadai" data-price="200"><h3>Chicken Kadai</h3><div class="price">₹200</div><button class="add" onclick="addToCart(this)">Add</button></div>
+
+      <div class="food-item" data-name="Egg Curry" data-price="130"><h3>Egg Curry</h3><div class="price">₹130</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Egg Masala" data-price="140"><h3>Egg Masala</h3><div class="price">₹140</div><button class="add" onclick="addToCart(this)">Add</button></div>
+
+      <div class="food-item" data-name="Fish Curry" data-price="220"><h3>Fish Curry</h3><div class="price">₹220</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Prawn Masala" data-price="240"><h3>Prawn Masala</h3><div class="price">₹240</div><button class="add" onclick="addToCart(this)">Add</button></div>
+    </div>
+  </section>
+
+  <!-- Starters -->
+  <section class="card" id="starters">
+    <h2 class="section-title">Starters</h2>
+    <div class="menu-grid">
+      <div class="food-item" data-name="Paneer Tikka" data-price="180"><h3>Paneer Tikka</h3><div class="price">₹180</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Paneer 65" data-price="160"><h3>Paneer 65</h3><div class="price">₹160</div><button class="add" onclick="addToCart(this)">Add</button></div>
+
+      <div class="food-item" data-name="Chicken Tikka" data-price="190"><h3>Chicken Tikka</h3><div class="price">₹190</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Chicken 65" data-price="160"><h3>Chicken 65</h3><div class="price">₹160</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Tandoori Chicken (Half)" data-price="220"><h3>Tandoori Chicken (Half)</h3><div class="price">₹220</div><button class="add" onclick="addToCart(this)">Add</button></div>
+
+      <div class="food-item" data-name="Veg Manchurian (Dry)" data-price="150"><h3>Veg Manchurian (Dry)</h3><div class="price">₹150</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Gobi Manchurian" data-price="140"><h3>Gobi Manchurian</h3><div class="price">₹140</div><button class="add" onclick="addToCart(this)">Add</button></div>
+
+      <div class="food-item" data-name="Egg Pakora" data-price="120"><h3>Egg Pakora</h3><div class="price">₹120</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Fish Fingers" data-price="210"><h3>Fish Fingers</h3><div class="price">₹210</div><button class="add" onclick="addToCart(this)">Add</button></div>
+    </div>
+  </section>
+
+  <!-- Breads -->
+  <section class="card" id="breads">
+    <h2 class="section-title">Breads</h2>
+    <div class="menu-grid">
+      <div class="food-item" data-name="Roti" data-price="12"><h3>Roti</h3><div class="price">₹12</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Butter Roti" data-price="15"><h3>Butter Roti</h3><div class="price">₹15</div><button class="add" onclick="addToCart(this)">Add</button></div>
+
+      <div class="food-item" data-name="Plain Naan" data-price="25"><h3>Plain Naan</h3><div class="price">₹25</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Butter Naan" data-price="35"><h3>Butter Naan</h3><div class="price">₹35</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Garlic Naan" data-price="40"><h3>Garlic Naan</h3><div class="price">₹40</div><button class="add" onclick="addToCart(this)">Add</button></div>
+
+      <div class="food-item" data-name="Paratha" data-price="30"><h3>Paratha</h3><div class="price">₹30</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Aloo Paratha" data-price="50"><h3>Aloo Paratha</h3><div class="price">₹50</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Lachha Paratha" data-price="45"><h3>Lachha Paratha</h3><div class="price">₹45</div><button class="add" onclick="addToCart(this)">Add</button></div>
+
+      <div class="food-item" data-name="Tandoori Roti" data-price="20"><h3>Tandoori Roti</h3><div class="price">₹20</div><button class="add" onclick="addToCart(this)">Add</button></div>
+    </div>
+  </section>
+
+  <!-- Rice & Fried Rice -->
+  <section class="card" id="rice">
+    <h2 class="section-title">Rice & fried rice</h2>
+    <div class="menu-grid">
+      <div class="food-item" data-name="Basmati Steam Rice" data-price="70"><h3>Basmati Steam Rice</h3><div class="price">₹70</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Jeera Rice" data-price="90"><h3>Jeera Rice</h3><div class="price">₹90</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Ghee Rice" data-price="90"><h3>Ghee Rice</h3><div class="price">₹90</div><button class="add" onclick="addToCart(this)">Add</button></div>
+
+      <div class="food-item" data-name="Veg Fried Rice" data-price="140"><h3>Veg Fried Rice</h3><div class="price">₹140</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Egg Fried Rice" data-price="150"><h3>Egg Fried Rice</h3><div class="price">₹150</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Chicken Fried Rice" data-price="160"><h3>Chicken Fried Rice</h3><div class="price">₹160</div><button class="add" onclick="addToCart(this)">Add</button></div>
+
+      <div class="food-item" data-name="Schezwan Fried Rice (Veg)" data-price="150"><h3>Schezwan Fried Rice (Veg)</h3><div class="price">₹150</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Schezwan Fried Rice (Chicken)" data-price="170"><h3>Schezwan Fried Rice (Chicken)</h3><div class="price">₹170</div><button class="add" onclick="addToCart(this)">Add</button></div>
+    </div>
+  </section>
+
+  <!-- Biryani -->
+  <section class="card" id="biryani">
+    <h2 class="section-title">Biryani</h2>
+    <div class="menu-grid">
+      <div class="food-item" data-name="Veg Biryani" data-price="150"><h3>Veg Biryani</h3><div class="price">₹150</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Egg Biryani" data-price="160"><h3>Egg Biryani</h3><div class="price">₹160</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Chicken Biryani" data-price="190"><h3>Chicken Biryani</h3><div class="price">₹190</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Chicken Dum Biryani" data-price="210"><h3>Chicken Dum Biryani</h3><div class="price">₹210</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Mutton Biryani" data-price="280"><h3>Mutton Biryani</h3><div class="price">₹280</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Kolkata Chicken Biryani" data-price="220"><h3>Kolkata Chicken Biryani</h3><div class="price">₹220</div><button class="add" onclick="addToCart(this)">Add</button></div>
+    </div>
+  </section>
+
+  <!-- Beverages -->
+  <section class="card" id="beverages">
+    <h2 class="section-title">Beverages</h2>
+    <div class="menu-grid">
+      <div class="food-item" data-name="Mineral Water (1L)" data-price="20"><h3>Mineral Water (1L)</h3><div class="price">₹20</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Thums Up" data-price="40"><h3>Thums Up</h3><div class="price">₹40</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Coca‑Cola" data-price="40"><h3>Coca‑Cola</h3><div class="price">₹40</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Sprite" data-price="40"><h3>Sprite</h3><div class="price">₹40</div><button class="add" onclick="addToCart(this)">Add</button></div>
+
+      <div class="food-item" data-name="Masala Chaas" data-price="40"><h3>Masala Chaas</h3><div class="price">₹40</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Sweet Lassi" data-price="60"><h3>Sweet Lassi</h3><div class="price">₹60</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Salted Lassi" data-price="60"><h3>Salted Lassi</h3><div class="price">₹60</div><button class="add" onclick="addToCart(this)">Add</button></div>
+    </div>
+  </section>
+
+  <!-- Desserts -->
+  <section class="card" id="desserts">
+    <h2 class="section-title">Desserts</h2>
+    <div class="menu-grid">
+      <div class="food-item" data-name="Gulab Jamun (2 pcs)" data-price="60"><h3>Gulab Jamun (2 pcs)</h3><div class="price">₹60</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Rasgulla (2 pcs)" data-price="60"><h3>Rasgulla (2 pcs)</h3><div class="price">₹60</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Mishti Doi" data-price="80"><h3>Mishti Doi</h3><div class="price">₹80</div><button class="add" onclick="addToCart(this)">Add</button></div>
+      <div class="food-item" data-name="Kheer" data-price="90"><h3>Kheer</h3><div class="price">₹90</div><button class="add" onclick="addToCart(this)">Add</button></div>
+    </div>
+  </section>
+
+  <!-- Cart -->
+  <section class="card" id="cartSection">
+    <h2 class="section-title">Your cart</h2>
+    <ul class="cart-list" id="cart-list"></ul>
+    <div class="totals">
+      <div class="row"><span>Subtotal</span><span>₹<span id="subtotal">0</span></span></div>
+      <div class="row"><span>Delivery fee</span><span>₹<span id="delivery">0</span></span></div>
+      <div class="row"><span>Discount</span><span>₹<span id="discount">0</span></span></div>
+      <div class="row"><strong>Total</strong><strong>₹<span id="total">0</span></strong></div>
+    </div>
+    <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+      <button class="btn secondary" onclick="clearCart()">Clear cart</button>
+    </div>
+    <form class="form" onsubmit="event.preventDefault(); checkoutWhatsApp();">
+      <input id="cust-name" type="text" placeholder="Your name" required />
+      <textarea id="cust-address" rows="3" placeholder="Delivery address (landmark, floor, etc.)" required></textarea>
+      <input id="cust-phone" type="tel" placeholder="Phone number (for delivery)" />
+      <textarea id="cust-notes" rows="2" placeholder="Notes (no onion, extra spicy, etc.)"></textarea>
+      <button id="checkout-btn" class="btn" type="submit">Checkout via WhatsApp</button>
+      <div class="line-note" style="margin-top:4px;">Orders are processed by Spicy Kolkata • Narkatpalli • Delivery within 5 km</div>
+    </form>
+  </section>
+</main>
+
+<footer>
+  © 2025 Spicy Kolkata • Narkatpalli • Delivery within 5 km radius <br>
+  <small>WhatsApp checkout enabled. Replace WHATSAPP_NUMBER in code with your real number.</small>
+</footer>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<script>
+  // Configuration
+  const WHATSAPP_NUMBER = "916303785430"; // India format: 91 + 10 digits, no plus or spaces
+  let DELIVERY_FEE = 20;
+  let discountPercent = 0;
+
+  // Theme toggle
+  function toggleTheme() {
+    document.body.classList.toggle('dark');
+    toast(document.body.classList.contains('dark') ? "Dark theme on" : "Light theme on");
+  }
+
+  // Toast helper
+  function toast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(()=>t.classList.remove("show"), 1500);
+  }
+
+  // Navigation
+  function showCategory(id) {
+    document.querySelectorAll("section.card").forEach(sec => {
+      if (sec.id === id || sec.id === "cartSection") sec.classList.add("active");
+      else { sec.classList.remove("active"); sec.style.opacity = 0; }
+    });
+    const target = document.getElementById(id);
+    if (target) window.scrollTo({ top: target.offsetTop - 70, behavior: "smooth" });
+  }
+
+  // Cart state
+  const cart = [];
+
+  // Cart functions
+  function addToCart(btn) {
+    const itemEl = btn.closest(".food-item");
+    const name = itemEl.getAttribute("data-name");
+    const price = Number(itemEl.getAttribute("data-price"));
+    const existing = cart.find(i => i.name === name && i.price === price);
+    if (existing) existing.qty += 1;
+    else cart.push({ name, price, qty: 1 });
+    renderCart();
+    document.getElementById("cartSection").classList.add("cart-updated");
+    setTimeout(()=>document.getElementById("cartSection").classList.remove("cart-updated"),400);
+    toast(`${name} added to cart`);
+  }
+
+  function removeItem(index) {
+    cart.splice(index, 1);
+    renderCart();
+  }
+
+  function clearCart() {
+    cart.length = 0;
+    renderCart();
+    toast("Cart cleared");
+  }
+
+  function incrementQty(idx) { cart[idx].qty += 1; renderCart(); }
+  function decrementQty(idx) { if (cart[idx].qty > 1) cart[idx].qty -= 1; else cart.splice(idx,1); renderCart(); }
+
+  function renderCart() {
+    const ul = document.getElementById("cart-list");
+    ul.innerHTML = "";
+    let subtotal = 0;
+
+    cart.forEach((item, idx) => {
+      const line = item.price * item.qty;
+      subtotal += line;
+      const li = document.createElement("li");
+      li.className = "cart-item";
+      li.innerHTML = `
+        <div>
+          <strong>${item.name}</strong><br>
+          <span class="line-note">₹${item.price.toFixed(2)} × ${item.qty}</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <div>₹${line.toFixed(2)}</div>
+          <button class="btn secondary" onclick="decrementQty(${idx})">-</button>
+          <button class="btn secondary" onclick="incrementQty(${idx})">+</button>
+          <button class="btn danger" onclick="removeItem(${idx})">Remove</button>
+        </div>`;
+      ul.appendChild(li);
+    });
+
+    const delivery = cart.length ? DELIVERY_FEE : 0;
+    const discountValue = Math.round((subtotal * discountPercent) / 100);
+    const total = subtotal + delivery - discountValue;
+
+    document.getElementById("subtotal").textContent = subtotal.toFixed(2);
+    document.getElementById("delivery").textContent = delivery.toFixed(2);
+    document.getElementById("discount").textContent = discountValue.toFixed(2);
+    document.getElementById("total").textContent = total.toFixed(2);
+
+    const configured = WHATSAPP_NUMBER && !WHATSAPP_NUMBER.includes("X");
+    document.getElementById("checkout-btn").disabled = cart.length === 0 || !configured;
+  }
+
+  // WhatsApp checkout
+  function checkoutWhatsApp() {
+    if (!cart.length) { alert("Your cart is empty."); return; }
+    if (!WHATSAPP_NUMBER || WHATSAPP_NUMBER.includes("X")) { alert("WhatsApp number not configured."); return; }
+
+    const name = document.getElementById("cust-name").value.trim();
+    const address = document.getElementById("cust-address").value.trim();
+    const phone = document.getElementById("cust-phone").value.trim();
+    const notes = document.getElementById("cust-notes").value.trim();
+    if (!name || !address) { alert("Please enter your name and address."); return; }
+
+    const itemsLines = cart.map(i => `• ${i.name} (₹${i.price.toFixed(2)} × ${i.qty}) = ₹${(i.price*i.qty).toFixed(2)}`).join("\n");
+    const subtotal = document.getElementById("subtotal").textContent;
+    const delivery = document.getElementById("delivery").textContent;
+    const discount = document.getElementById("discount").textContent;
+    const total = document.getElementById("total").textContent;
+
+    const msg =
+`Order from Spicy Kolkata (Narkatpalli, within 5 km):
+${itemsLines}
+Subtotal: ₹${subtotal}
+Delivery: ₹${delivery}
+Discount: ₹${discount}
+Total: ₹${total}
+
+Name: ${name}
+Address: ${address}
+${phone ? "Phone: " + phone + "\n" : ""}${notes ? "Notes: " + notes + "\n" : ""}Requested via website`;
+
+    const waUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+    window.open(waUrl, "_blank");
+  }
+
+  // Init
+  showCategory('veg');
+</script>
+</body>
+</html>
